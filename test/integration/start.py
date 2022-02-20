@@ -69,7 +69,7 @@ def add():
 
     # create a new transaction
     response = loop.run_until_complete(h.chaincode_invoke(['add', json.dumps(values)]))
-    if response == "信息添加成功":
+    if response == "信息添加成功" or "信息更新成功":
         return jsonify(response), 201
     return jsonify(response), 400
 

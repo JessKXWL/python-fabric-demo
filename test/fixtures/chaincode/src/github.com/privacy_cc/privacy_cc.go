@@ -20,8 +20,9 @@ type PrivacyData struct {
 
 func (t *PrivacyChaincode) Init(stub shim.ChaincodeStubInterface) peer.Response {
 	function, args := stub.GetFunctionAndParameters()
-	fmt.Println(" ============================= Init ================================")
-	fmt.Println(" ==== Init传入函数与参数 ====", function, args)
+	fmt.Println(function)
+	fmt.Println(args[0])
+	fmt.Println(" ==== Init ====")
 	return shim.Success(nil)
 }
 
@@ -31,9 +32,10 @@ func (t *PrivacyChaincode) Init(stub shim.ChaincodeStubInterface) peer.Response 
 func (t *PrivacyChaincode) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	// 获取用户意图
 	function, args := stub.GetFunctionAndParameters()
-	fmt.Println("invoke is running" + function)
+	fmt.Println("invoke is running " + function)
 
 	if function == "add" {
+		fmt.Println(function + "start")
 		return t.add(stub, args)
 	} else if function == "query" {
 		return t.query(stub, args)
@@ -102,23 +104,35 @@ func (t *PrivacyChaincode) add(stub shim.ChaincodeStubInterface, args []string) 
 	}
 
 	fmt.Println("根据Id获取值")
-	_, exist := GetPrivacyDataInfo(stub, privacyData.Identifier)
+	result, exist := GetPrivacyDataInfo(stub, privacyData.Identifier)
 	if exist {
 		fmt.Println("需要添加的ID已经存在, 更新该ID值")
-		return t.update(stub, args)
+		// return t.update(stub, args)
+		result.Identifier = privacyData.Identifier
+		result.Data = privacyData.Data
+		_, bl := PutPrivacyData(stub, result)
+		if !bl {
+			return shim.Error("保存信息时发生错误")
+		}
+		fmt.Println("发送事件")
+		err = stub.SetEvent("added", []byte{})
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success([]byte("信息更新成功"))
+	} else {
+		fmt.Println("添加数据")
+		_, bl := PutPrivacyData(stub, privacyData)
+		if !bl {
+			return shim.Error("保存信息时发生错误")
+		}
+		fmt.Println("发送事件")
+		err = stub.SetEvent("added", []byte{})
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success([]byte("信息添加成功"))
 	}
-	fmt.Println("添加数据")
-	_, bl := PutPrivacyData(stub, privacyData)
-	if !bl {
-		return shim.Error("保存信息时发生错误")
-	}
-	fmt.Println("发送事件")
-	err = stub.SetEvent("added", []byte{})
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	return shim.Success([]byte("信息添加成功"))
 }
 
 // 根据Identifier查询详情
